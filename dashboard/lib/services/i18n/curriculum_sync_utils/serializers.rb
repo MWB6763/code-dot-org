@@ -8,12 +8,7 @@ module Services
           # Default CollectionSerializer behavior is to return an array of hashes,
           # where each hash is a single result. We would instead like to return a
           # single hash, keyed by `crowdin_key`
-          return super.reduce({}) do |results, result|
-            raise KeyEror.new("Serializer must define :crowdin_key for curriculum content I18N serialization; got #{result.keys.inspect}") unless result.key?(:crowdin_key)
-            crowdin_key = result.delete(:crowdin_key)
-            results[crowdin_key] = result unless result.empty?
-            results
-          end
+          super.reduce(:deep_merge)
         end
       end
 
@@ -28,7 +23,10 @@ module Services
           # default of only a single level of nesting.
           options[:include_directive] ||= JSONAPI::IncludeDirective.new('**', allow_wildcard: true)
           # compact the result, excluding not only nil values but also empty ones
-          super.reject {|_, v| v.blank?}
+          result = super.reject {|_, v| v.blank?}
+          raise KeyEror.new("Serializer must define :crowdin_key for curriculum content I18N serialization; got #{result.keys.inspect}") unless result.key?(:crowdin_key)
+          crowdin_key = result.delete(:crowdin_key)
+          {crowdin_key => result}
         end
 
         # Add a 'crowdin_key' attribute to every model. Should return a value that
